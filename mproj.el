@@ -124,7 +124,7 @@ the STORE-ALIST"
 
 (defun mproj--index-projects (containers)
   "Returns an association list of name/project as the result of
-indexing projects found in the `containers'"
+indexing projects found in the `CONTAINERS'"
   (reduce
    #'mproj--register
    (mproj--find-projects-in containers)
@@ -175,5 +175,3 @@ indexing projects found in the `containers'"
 
 (if mproj-bind-global-key
     (global-set-key (kbd "C-x p o") #'mproj/open-project))
-
-(setq *mproj* nil)
