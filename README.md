@@ -28,6 +28,20 @@ that resumes to open the project root in dired. That can be changed in
 `mproj-default-action` and for example make it open the project in
 `perspective-mode`.
 
+```el
+(require 'perspective)
+
+(setq mproj-default-action
+      (lambda (proj)
+        (let* ((name (mproj-project-name proj))
+               (first-time? (not (gethash name perspectives-hash)))
+               (current-perspective persp-curr))
+          (persp-switch name)
+          (setq persp-last current-perspective)
+          (if first-time?
+              (find-file (mproj-project-root-dir proj))))))
+```
+
 ## License
 
 Copyright © 2017 Pedro Major <pedro.major@gmail.com>

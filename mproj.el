@@ -57,7 +57,7 @@
 (defcustom mproj-default-action
   (lambda (project)
     (find-file
-     (mproj-project-root-dir project)))
+     (mproj-project-root project)))
   "A lambda expression that is evaluated by `mproj/open-project'
 when a project is selected"
   :group 'mproj
@@ -67,21 +67,17 @@ when a project is selected"
     (mproj-project
      :named
      (:type list)
-     (:constructor mproj--create-project))
-  root-dir
-  top-dir
-  (name (mproj--make-name-from top-dir root-dir)))
+     (:constructor mproj--make-project
+                   (name container-name root)))
+  (root nil :read-only)
+  (container-name nil :read-only)
+  (name nil :read-only))
 
 (defvar *mproj* nil
   "Global var holding a association list of registered projects")
 
-(defun mproj--make-name-from (top-dir project-root-dir)
-  "Generates the project name by concatenating the root and
-top level directory base names"
-  (format
-   "%14s <%s>"
-   (file-name-base (directory-file-name project-root-dir))
-   (file-name-base (directory-file-name top-dir))))
+(defun mproj--dir-base-name (dir)
+  (file-name-base (directory-file-name dir)))
 
 (defun mproj--list-directory (dir)
   "Return a list of subdirectories of DIR"
@@ -90,53 +86,74 @@ top level directory base names"
           (directory-files dir t mproj-directory-regex)
           :initial-value nil))
 
-(defun mproj--process-top-dirs (top-dirs)
-  "Processes TOP-DIRS and returns a list of projects data
-structures."
+(defun mproj--find-projects-in (containers)
+  "Returns a list of `mproj-project' data structures from the
+identified projects in `CONTAINERS'"
   (reduce
    #'append
    (mapcar
-    (lambda (top-dir) (mapcar
-                  (lambda (root)
-                    (mproj--create-project :root-dir root
-                                           :top-dir top-dir))
-                  (mproj--list-directory top-dir)))
-    (mapcar #'expand-file-name top-dirs))))
+    (lambda (container)
+      (mapcar
+       (lambda (root)
+         (mproj--make-project (mproj--dir-base-name root)
+                              (mproj--dir-base-name container)
+                              root))
+       (mproj--list-directory container)))
+    (mapcar #'expand-file-name containers))))
+
+(defun mproj--gen-key (project)
+  (concat (mproj-project-name project)
+          "-"
+          (mproj-project-container-name project)))
 
 (defun mproj--register (store-alist project)
-  "Register a PROJECT in STORE-ALIST"
-  (let ((name (mproj-project-name project)))
-    (if (assoc name store-alist)
-        (error "A project named %s already exists." name)
-      (push (cons name project) store-alist))))
+  "Register a PROJECT returns an updated `STORE-ALIST'"
+  (let ((k (mproj--gen-key project)))
+    (if (assoc k store-alist)
+        (error "Trying to register a duplicate key %s" name)
+      (acons k project store-alist))))
 
-(defun mproj--lookup (store-alist name)
-  "Lookup a project by NAME and return it's associated data from
+(defun mproj--lookup (store-alist key)
+  "Lookup a project by KEY and return it's associated data from
 the STORE-ALIST"
-  (cdr (assoc name store-alist)))
+  (cdr (assoc key store-alist)))
 
 (defun mproj--projects-names (store-alist)
   "Return a list of registered project names"
   (mapcar #'car store-alist))
 
-(defun mproj--index-projects ()
-  (setq *mproj*
-        (reduce
-         #'mproj--register
-         (mproj--process-top-dirs mproj-projects-dirs-list)
-         :initial-value nil)))
+(defun mproj--index-projects (containers)
+  "Returns an association list of name/project as the result of
+indexing projects found in the `containers'"
+  (reduce
+   #'mproj--register
+   (mproj--find-projects-in containers)
+   :initial-value nil))
 
-(defun mproj--open-project-really (proj-name)
+(defun mproj--format-minibar-entry (proj)
+  (format
+   "%14s <%s>"
+   (mproj-project-name proj)
+   (mproj-project-container-name proj)))
+
+(defun mproj--reconstruct-key-from (minibar-entry)
+  (replace-regexp-in-string "\s+\\(.+\\)\s+<\\(.+\\)>"
+                            "\\1-\\2"
+                            minibar-entry))
+
+(defun mproj--open-project-really (minibar-entry)
   (interactive
    (list
     (completing-read "Open a project:"
-                     (mproj--projects-names *mproj*))))
-  (let ((project (mproj--lookup *mproj* proj-name)))
+                     (mapcar #'mproj--format-minibar-entry
+                             (mapcar #'cdr *mproj*)))))
+  (let* ((k (mproj--reconstruct-key-from minibar-entry))
+         (project (mproj--lookup *mproj* k)))
     (cond
      ((null project)
       (error
        "BUG: Can't locate information for project named '%s' "
-       proj-name))
+       minibar-entry))
      ((not (mproj-project-p project))
       (error
        "BUG: Internal error, project object type mismatch"))
@@ -149,7 +166,9 @@ the STORE-ALIST"
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
   (interactive)
-  (when (zerop (length *mproj*)) (mproj--index-projects))
+  (if (zerop (length *mproj*))
+      (setq *mproj*
+            (mproj--index-projects mproj-projects-dirs-list)))
   (cond ((zerop (length *mproj*))
          (message "No projects found!"))
         (t (call-interactively 'mproj--open-project-really))))
@@ -157,4 +176,4 @@ the STORE-ALIST"
 (if mproj-bind-global-key
     (global-set-key (kbd "C-x p o") #'mproj/open-project))
 
-(provide 'mproj)
+(setq *mproj* nil)
