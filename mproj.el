@@ -175,3 +175,5 @@ indexing projects found in the `CONTAINERS'"
 
 (if mproj-bind-global-key
     (global-set-key (kbd "C-x p o") #'mproj/open-project))
+
+(provide 'mproj)
