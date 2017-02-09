@@ -101,11 +101,6 @@ identified projects in `CONTAINERS'"
        (mproj--list-directory container)))
     (mapcar #'expand-file-name containers))))
 
-(defun mproj--gen-key (project)
-  (concat (mproj-project-name project)
-          "-"
-          (mproj-project-container-name project)))
-
 (defun mproj--register (store-alist project)
   "Register a PROJECT returns an updated `STORE-ALIST'"
   (let ((k (mproj--gen-key project)))
@@ -130,38 +125,50 @@ indexing projects found in the `CONTAINERS'"
    (mproj--find-projects-in containers)
    :initial-value nil))
 
-(defun mproj--format-minibar-entry (proj)
-  (format
-   "%14s <%s>"
-   (mproj-project-name proj)
-   (mproj-project-container-name proj)))
+(defun mproj--gen-key (project)
+  (concat (mproj-project-name project)
+          "-"
+          (mproj-project-container-name project)))
 
-(defun mproj--reconstruct-key-from (minibar-entry)
-  (replace-regexp-in-string "\s+\\(.+\\)\s+<\\(.+\\)>"
-                            "\\1-\\2"
-                            minibar-entry))
+(defun mproj--format-minibar-entry (proj)
+  (concat
+   (format "%14s" (mproj-project-name proj))
+   (if-let (cont (mproj-project-container-name proj))
+       (format " <%s>" cont))))
+
+(defun mproj--digest-named (name)
+  "Index a detached project `NAME' from a directory."
+  (let ((proj (mproj--make-project name nil nil)))
+    (setq *mproj* (mproj--register *mproj* proj))
+    proj))
+
+(defun mproj--make-minibar-projects-alist (store)
+  (mapcar
+   (lambda (x) (cons (mproj--format-minibar-entry (cdr x))
+                (cdr x)))
+   *mproj*))
 
 (defun mproj--open-project-really (minibar-entry)
-  (interactive
-   (list
-    (completing-read "Open a project:"
-                     (mapcar #'mproj--format-minibar-entry
-                             (mapcar #'cdr *mproj*)))))
-  (let* ((k (mproj--reconstruct-key-from minibar-entry))
-         (project (mproj--lookup *mproj* k)))
-    (cond
-     ((null project)
-      (error
-       "BUG: Can't locate information for project named '%s' "
-       minibar-entry))
-     ((not (mproj-project-p project))
-      (error
-       "BUG: Internal error, project object type mismatch"))
-     ((not (functionp mproj-default-action))
-      (error
-       "Error: The `mproj-default-action' isn't callable"))
-     (t
-      (funcall mproj-default-action project)))))
+  (interactive "i")
+  (let ((mp (mproj--make-minibar-projects-alist *mproj*)))
+    (setq minibar-entry
+          (completing-read "Open a project:"
+                           (mapcar #'car mp)))
+    (let* ((project (or (mproj--lookup mp minibar-entry)
+                        (mproj--digest-named minibar-entry))))
+      (cond
+       ((null project)
+        (error
+         "BUG: Couldn't create or get project '%s' "
+         minibar-entry))
+       ((not (mproj-project-p project))
+        (error
+         "BUG: Internal error, project object type mismatch"))
+       ((not (functionp mproj-default-action))
+        (error
+         "Error: The `mproj-default-action' isn't callable"))
+       (t
+        (funcall mproj-default-action project))))))
 
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
@@ -169,9 +176,7 @@ indexing projects found in the `CONTAINERS'"
   (if (zerop (length *mproj*))
       (setq *mproj*
             (mproj--index-projects mproj-projects-dirs-list)))
-  (cond ((zerop (length *mproj*))
-         (message "No projects found!"))
-        (t (call-interactively 'mproj--open-project-really))))
+  (call-interactively 'mproj--open-project-really))
 
 (if mproj-bind-global-key
     (global-set-key (kbd "C-x p o") #'mproj/open-project))

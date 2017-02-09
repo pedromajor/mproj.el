@@ -38,8 +38,8 @@ that resumes to open the project root in dired. That can be changed in
                (current-perspective persp-curr))
           (persp-switch name)
           (setq persp-last current-perspective)
-          (if first-time?
-              (find-file (mproj-project-root-dir proj))))))
+          (if (and first-time? (mproj-project-root proj))
+              (find-file (mproj-project-root proj)))))
 ```
 
 ## License
