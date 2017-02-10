@@ -42,6 +42,11 @@ that resumes to open the project root in dired. That can be changed in
               (find-file (mproj-project-root proj)))))
 ```
 
+When `mproj/open-project' is called with a prefix argument `C-u' the
+internal index is purged and a new one is made, in practice it allows a
+refresh of the project list when a new adition is made.
+
+
 ## License
 
 Copyright © 2017 Pedro Major <pedro.major@gmail.com>

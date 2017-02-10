@@ -173,7 +173,7 @@ indexing projects found in the `CONTAINERS'"
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
   (interactive)
-  (if (zerop (length *mproj*))
+  (if (or (zerop (length *mproj*)) current-prefix-arg)
       (setq *mproj*
             (mproj--index-projects mproj-projects-dirs-list)))
   (call-interactively 'mproj--open-project-really))
