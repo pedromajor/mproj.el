@@ -76,6 +76,9 @@ when a project is selected"
 (defvar *mproj* nil
   "Global var holding a association list of registered projects")
 
+(defvar *mproj--current* nil
+  "Global var holding the current selected project")
+
 (defun mproj--dir-base-name (dir)
   (file-name-base (directory-file-name dir)))
 
@@ -105,7 +108,7 @@ identified projects in `CONTAINERS'"
   "Register a PROJECT returns an updated `STORE-ALIST'"
   (let ((k (mproj--gen-key project)))
     (if (assoc k store-alist)
-        (error "Trying to register a duplicate key %s" name)
+      (error "Aborting, duplicated project name detected: %s" k)
       (acons k project store-alist))))
 
 (defun mproj--lookup (store-alist key)
@@ -168,17 +171,28 @@ indexing projects found in the `CONTAINERS'"
         (error
          "Error: The `mproj-default-action' isn't callable"))
        (t
+        (setq *mproj--current* project)
         (funcall mproj-default-action project))))))
+
+(defun mproj-find-project-root (proj)
+  "Open project root dir in dired"
+  (unless (null proj)
+    (find-file (mproj-project-root proj))))
 
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
   (interactive)
   (if (or (zerop (length *mproj*)) current-prefix-arg)
-      (setq *mproj*
-            (mproj--index-projects mproj-projects-dirs-list)))
+    (setq *mproj*
+          (mproj--index-projects mproj-projects-dirs-list)))
   (call-interactively 'mproj--open-project-really))
 
-(if mproj-bind-global-key
-    (global-set-key (kbd "C-x p o") #'mproj/open-project))
+(when mproj-bind-global-key
+  (global-set-key (kbd "C-x p o")
+                  #'mproj/open-project)
+  (global-set-key (kbd "C-x p r")
+                  (lambda ()
+                    (interactive)
+                    (mproj-find-project-root *mproj--current*))))
 
 (provide 'mproj)
