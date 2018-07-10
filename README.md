@@ -34,12 +34,12 @@ that resumes to open the project root in dired. That can be changed in
 (setq mproj-default-action
       (lambda (proj)
         (let* ((name (mproj-project-name proj))
-               (first-time? (not (gethash name perspectives-hash)))
-               (current-perspective persp-curr))
+               (first-time? (not (gethash name (perspectives-hash))))
+               (current-perspective (persp-curr)))
           (persp-switch name)
           (setq persp-last current-perspective)
           (if (and first-time? (mproj-project-root proj))
-              (find-file (mproj-project-root proj)))))
+              (find-file (mproj-project-root proj))))))
 ```
 
 When `mproj/open-project' is called with a prefix argument `C-u' the
