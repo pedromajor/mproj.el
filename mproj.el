@@ -179,6 +179,10 @@ indexing projects found in the `CONTAINERS'"
   (unless (null proj)
     (find-file (mproj-project-root proj))))
 
+(defun mproj-make-index (&rest containers)
+  "Indexes all projects found in `containers'"
+  (setq *mproj* (mproj--index-projects containers)))
+
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
   (interactive)
