@@ -94,21 +94,21 @@ when a project is selected"
 identified projects in `CONTAINERS'"
   (reduce
    #'append
-   (mapcar
-    (lambda (container)
-      (mapcar
-       (lambda (root)
-         (mproj--make-project (mproj--dir-base-name root)
-                              (mproj--dir-base-name container)
-                              root))
-       (mproj--list-directory container)))
-    (mapcar #'expand-file-name containers))))
+   (mapcar (lambda (container)
+             (mapcar
+              (lambda (root)
+                (mproj--make-project (mproj--dir-base-name root)
+                                     (mproj--dir-base-name container)
+                                     root))
+              (mproj--list-directory container)))
+           (seq-filter #'file-exists-p
+                       (mapcar #'expand-file-name containers)))))
 
 (defun mproj--register (store-alist project)
   "Register a PROJECT returns an updated `STORE-ALIST'"
   (let ((k (mproj--gen-key project)))
     (if (assoc k store-alist)
-      (error "Aborting, duplicated project name detected: %s" k)
+        (error "Aborting, duplicated project name detected: %s" k)
       (acons k project store-alist))))
 
 (defun mproj--lookup (store-alist key)
@@ -148,7 +148,7 @@ indexing projects found in the `CONTAINERS'"
 (defun mproj--make-minibar-projects-alist (store)
   (mapcar
    (lambda (x) (cons (mproj--format-minibar-entry (cdr x))
-                (cdr x)))
+                     (cdr x)))
    *mproj*))
 
 (defun mproj--open-project-really (minibar-entry)
@@ -180,15 +180,15 @@ indexing projects found in the `CONTAINERS'"
     (find-file (mproj-project-root proj))))
 
 (defun mproj-make-index (&rest containers)
-  "Indexes all projects found in `containers'"
+  "Indexes all projects found in `CONTAINERS'"
   (setq *mproj* (mproj--index-projects containers)))
 
 (defun mproj/open-project ()
   "Executes associated action on the selected user project"
   (interactive)
   (if (or (zerop (length *mproj*)) current-prefix-arg)
-    (setq *mproj*
-          (mproj--index-projects mproj-projects-dirs-list)))
+      (setq *mproj*
+            (mproj--index-projects mproj-projects-dirs-list)))
   (call-interactively 'mproj--open-project-really))
 
 (when mproj-bind-global-key
